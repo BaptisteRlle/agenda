@@ -1,0 +1,259 @@
+#include "agenda.hpp"
+#include <iostream>
+#include <fstream>
+#include <random>
+
+using namespace std;
+
+// ---------------- CONSTRUCTEUR ----------------
+Agenda::Agenda() {
+    cout << "Titre de l'agenda : ";
+    getline(cin, titre);
+
+    cout << "Description (écrire 'stop' pour finir) :" << endl;
+    string ligne;
+    while (getline(cin, ligne) && ligne != "stop")
+        description.push_back(ligne);
+}
+
+// ---------------- MODIFIER ----------------
+void Agenda::modifier() {
+    cout << "Nouveau titre : ";
+    cin.ignore();
+    getline(cin, titre);
+
+    cout << "Nouvelle description (stop pour finir) :" << endl;
+    description.clear();
+
+    string ligne;
+    while (getline(cin, ligne) && ligne != "stop")
+        description.push_back(ligne);
+}
+
+// ---------------- AFFICHER ----------------
+void Agenda::afficher() const {
+    cout << "\n===== AGENDA =====\n";
+    cout << titre << "\n\n";
+
+    for (auto& l : description)
+        cout << l << "\n";
+
+    cout << "\n--- Événements ---\n";
+
+    if (evenements.empty()) {
+        cout << "Aucun événement.\n";
+        return;
+    }
+
+    for (auto& e : evenements) {
+        cout << "\nID : " << e.id << endl;
+        cout << "Titre : " << e.titre << endl;
+
+        cout << "Description :\n";
+        for (auto& l : e.description)
+            cout << "- " << l << endl;
+
+        cout << "Début : " << e.debut.jour << "/" << e.debut.mois << "/" << e.debut.annee
+             << " " << e.debut.heure << ":" << e.debut.minutes << endl;
+
+        cout << "Fin   : " << e.fin.jour << "/" << e.fin.mois << "/" << e.fin.annee
+             << " " << e.fin.heure << ":" << e.fin.minutes << endl;
+    }
+}
+
+// ---------------- AJOUTER ----------------
+void Agenda::ajouterEvenement() {
+    Evenement e;
+
+    cout << "Titre de l'événement : ";
+    cin >> e.titre;
+    cin.ignore();
+
+    cout << "Description de l'événement ('.' pour finir) :" << endl;
+    string ligne;
+    while (getline(cin, ligne) && ligne != ".")
+        e.description.push_back(ligne);
+
+    do {
+        cout << "DEBUT (jour mois annee heure minutes) : ";
+        cin >> e.debut.jour >> e.debut.mois >> e.debut.annee >> e.debut.heure >> e.debut.minutes;
+    } while (!dateValide(e.debut));
+
+    do {
+        cout << "FIN (jour mois annee heure minutes) : ";
+        cin >> e.fin.jour >> e.fin.mois >> e.fin.annee >> e.fin.heure >> e.fin.minutes;
+    } while (!dateValide(e.fin) || !finApresDebut(e.debut, e.fin));
+
+    e.id = genererID();
+    evenements.push_back(e);
+
+    cout << "Événement ajouté !" << endl;
+}
+
+// ---------------- SUPPRIMER ----------------
+void Agenda::supprimerEvenement() {
+    if (evenements.empty()) {
+        cout << "Aucun événement.\n";
+        return;
+    }
+
+    string t;
+    cout << "Titre de l'événement à supprimer : ";
+    cin >> t;
+
+    for (size_t i = 0; i < evenements.size(); i++) {
+        if (evenements[i].titre == t) {
+            evenements.erase(evenements.begin() + i);
+            cout << "Supprimé.\n";
+            return;
+        }
+    }
+
+    cout << "Aucun événement trouvé.\n";
+}
+
+// ---------------- EXPORT HTML ----------------
+void Agenda::exporterHTML() const {
+    ofstream f("agenda.html");
+
+    f << "<html><body>";
+    f << "<h1>" << titre << "</h1>";
+
+    for (auto& l : description)
+        f << "<p>" << l << "</p>";
+
+    f << "<h2>Événements</h2>";
+
+    for (auto& e : evenements) {
+        f << "<h3>" << e.titre << "</h3>";
+        for (auto& l : e.description)
+            f << "<p>" << l << "</p>";
+    }
+
+    f << "</body></html>";
+
+    cout << "HTML exporté dans agenda.html\n";
+}
+
+// ---------------- ENREGISTRER TXT ----------------
+void Agenda::enregistrer(const string& nom) const {
+    ofstream f(nom);
+
+    f << "Titre : " << titre << endl;
+    for (auto& l : description) f << l << endl;
+
+    f << "\nÉvénements :\n";
+    for (auto& e : evenements)
+        f << "- " << e.titre << " (" << e.id << ")\n";
+
+    cout << "Enregistré dans " << nom << endl;
+}
+
+// ---------------- EXPORT JSON ----------------
+void Agenda::exporterJSON(const string& nom) const {
+    ofstream f(nom);
+
+    if (!f) {
+        cout << "Erreur d'écriture JSON.\n";
+        return;
+    }
+
+    f << "{\n";
+    f << "  \"titre\": \"" << titre << "\",\n";
+
+    f << "  \"description\": [\n";
+    for (size_t i = 0; i < description.size(); i++) {
+        f << "    \"" << description[i] << "\"";
+        if (i + 1 < description.size()) f << ",";
+        f << "\n";
+    }
+    f << "  ],\n";
+
+    f << "  \"evenements\": [\n";
+    for (size_t i = 0; i < evenements.size(); i++) {
+        const auto& e = evenements[i];
+        f << "    {\n";
+        f << "      \"id\": \"" << e.id << "\",\n";
+        f << "      \"titre\": \"" << e.titre << "\",\n";
+
+        f << "      \"description\": [\n";
+        for (size_t j = 0; j < e.description.size(); j++) {
+            f << "        \"" << e.description[j] << "\"";
+            if (j + 1 < e.description.size()) f << ",";
+            f << "\n";
+        }
+        f << "      ],\n";
+
+        f << "      \"debut\": {\"jour\": " << e.debut.jour << ", \"mois\": " << e.debut.mois
+          << ", \"annee\": " << e.debut.annee << ", \"heure\": " << e.debut.heure
+          << ", \"minutes\": " << e.debut.minutes << "},\n";
+
+        f << "      \"fin\": {\"jour\": " << e.fin.jour << ", \"mois\": " << e.fin.mois
+          << ", \"annee\": " << e.fin.annee << ", \"heure\": " << e.fin.heure
+          << ", \"minutes\": " << e.fin.minutes << "}\n";
+
+        f << "    }";
+        if (i + 1 < evenements.size()) f << ",";
+        f << "\n";
+    }
+
+    f << "  ]\n";
+    f << "}\n";
+
+    cout << "JSON exporté dans " << nom << endl;
+}
+
+// ---------------- IMPORT JSON ----------------
+bool Agenda::importerJSON(const string& nom) {
+    ifstream f(nom);
+    if (!f) {
+        cout << "Fichier JSON introuvable.\n";
+        return false;
+    }
+
+    description.clear();
+    evenements.clear();
+
+    string line;
+
+    while (getline(f, line)) {
+        if (line.find("\"titre\"") != string::npos) {
+            titre = line.substr(line.find(":") + 3);
+            titre.pop_back(); titre.pop_back();
+        }
+    }
+
+    cout << "JSON importé (titre seulement pour l'instant).\n";
+    cout << "⚠ Voulez-vous que j'implémente l'import COMPLET (événements inclus) ?\n";
+
+    return true;
+}
+
+// ---------------- OUTILS ----------------
+bool Agenda::dateValide(const Date& d) const {
+    return (d.jour >= 1 && d.jour <= 31 &&
+            d.mois >= 1 && d.mois <= 12 &&
+            d.heure >= 0 && d.heure <= 23 &&
+            d.minutes >= 0 && d.minutes <= 59);
+}
+
+bool Agenda::finApresDebut(const Date& a, const Date& b) const {
+    if (b.annee != a.annee) return b.annee > a.annee;
+    if (b.mois  != a.mois)  return b.mois  > a.mois;
+    if (b.jour  != a.jour)  return b.jour  > a.jour;
+    if (b.heure != a.heure) return b.heure > a.heure;
+    return b.minutes >= a.minutes;
+}
+
+string Agenda::genererID(int len) const {
+    static const char chars[] = "0123456789abcdef";
+    string id;
+    random_device rd;
+    mt19937 gen(rd());
+    uniform_int_distribution<> dis(0, 15);
+
+    for (int i = 0; i < len; i++)
+        id += chars[dis(gen)];
+
+    return id;
+}
