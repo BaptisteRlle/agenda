@@ -112,28 +112,82 @@ void Agenda::supprimerEvenement() {
     cout << "Aucun événement trouvé.\n";
 }
 
-// ---------------- EXPORT HTML ----------------
 void Agenda::exporterHTML() const {
     ofstream f("agenda.html");
 
-    f << "<html><body>";
-    f << "<h1>" << titre << "</h1>";
-
-    for (auto& l : description)
-        f << "<p>" << l << "</p>";
-
-    f << "<h2>Événements</h2>";
-
-    for (auto& e : evenements) {
-        f << "<h3>" << e.titre << "</h3>";
-        for (auto& l : e.description)
-            f << "<p>" << l << "</p>";
+    if (!f) {
+        cout << "Erreur : impossible de créer agenda.html\n";
+        return;
     }
 
-    f << "</body></html>";
+    f << "<!DOCTYPE html>\n";
+    f << "<html lang='fr'>\n";
+    
+    f << "<head>\n";
+    f << "    <meta charset='UTF-8'>\n";
+    f << "    <meta name='viewport' content='width=device-width, initial-scale=1.0'>\n";
+    f << "    <title>" << titre << "</title>\n";
+    f << "    <style>\n";
+    f << "        body { font-family: Arial, sans-serif; margin: 0; background: #f4f4f4; }\n";
+    f << "        .container { width: 80%; margin: auto; padding: 20px; }\n";
+    f << "        h1 { background: #007acc; color: white; padding: 20px; border-radius: 8px; }\n";
+    f << "        .description, .event { background: white; padding: 15px; border-radius: 8px; margin-top: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }\n";
+    f << "        .event-title { font-size: 1.3rem; color: #007acc; margin-bottom: 10px; }\n";
+    f << "        .event p { margin: 5px 0; }\n";
+    f << "        .date { font-weight: bold; color: #444; margin-top: 10px; }\n";
+    f << "        ul { margin-top: 5px; }\n";
+    f << "    </style>\n";
+    f << "</head>\n";
 
+    f << "<body>\n";
+    f << "    <div class='container'>\n";
+
+    // Titre
+    f << "        <h1>" << titre << "</h1>\n";
+
+    // Description
+    f << "        <div class='description'>\n";
+    f << "            <h2>Description</h2>\n";
+    for (auto& l : description)
+        f << "            <p>" << l << "</p>\n";
+    f << "        </div>\n";
+
+    // Événements
+    f << "        <h2>Événements</h2>\n";
+
+    if (evenements.empty()) {
+        f << "        <p>Aucun événement dans l'agenda.</p>\n";
+    } else {
+        for (auto& e : evenements) {
+            f << "        <div class='event'>\n";
+            f << "            <div class='event-title'>" << e.titre << "</div>\n";
+
+            f << "            <p><strong>Description :</strong></p>\n";
+            f << "            <ul>\n";
+            for (auto& l : e.description)
+                f << "                <li>" << l << "</li>\n";
+            f << "            </ul>\n";
+
+            f << "            <p class='date'>Date de début : "
+              << e.debut.jour << "/" << e.debut.mois << "/" << e.debut.annee
+              << " " << e.debut.heure << ":" << e.debut.minutes << "</p>\n";
+
+            f << "            <p class='date'>Date de fin : "
+              << e.fin.jour << "/" << e.fin.mois << "/" << e.fin.annee
+              << " " << e.fin.heure << ":" << e.fin.minutes << "</p>\n";
+
+            f << "        </div>\n";
+        }
+    }
+
+    f << "    </div>\n";
+    f << "</body>\n";
+    f << "</html>\n";
+
+    f.close();
     cout << "HTML exporté dans agenda.html\n";
 }
+
 
 // ---------------- ENREGISTRER TXT ----------------
 void Agenda::enregistrer(const string& nom) const {
